@@ -1,4 +1,7 @@
 #![cfg_attr(not(test), no_std)]
+// Allows guard! to use `super let` without callers enabling the feature.
+#![feature(allow_internal_unstable)]
+#![allow(internal_features)]
 
 //! Create a trusted carrier with a new lifetime that is guaranteed to be
 //! unique among other trusted carriers. When you call [`guard!`] to make a
@@ -166,13 +169,17 @@ impl<'id> LifetimeBrand<'id> {
 ///
 /// ```rust,compile_fail,E0716
 /// # // trybuild ui test tests/ui/crossed_streams-expr.rs
-/// # #![feature(super_let)]
 /// # use generativity::guard;
 /// let a = guard!(a);
 /// let b = guard!(b);
 /// dbg!(a == b); // ERROR (here == is a static check)
 /// ```
+///
+/// `guard!` is implemented with `super let`, which requires nightly Rust.
+/// Callers don't need to enable `#![feature(super_let)]`, as the macro is
+/// allowed to use it internally.
 #[macro_export]
+#[allow_internal_unstable(super_let)]
 macro_rules! guard {
     () => {
         $crate::guard! { anonymous_generativity_brand }
