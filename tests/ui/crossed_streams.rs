@@ -1,7 +1,7 @@
-use generativity::make_guard;
+use generativity::guard;
 
 fn main() {
-    make_guard!(a);
-    make_guard!(b);
+    let a = guard!(a);
+    let b = guard!(b);
     dbg!(a == b); // ERROR (here == is a static check)
 }

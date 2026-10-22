@@ -2,12 +2,12 @@
 // if this fails in crater *please* ping me; I *want* this to not hit the lint!
 #![deny(repr_transparent_external_private_fields)] // this should not trigger
 
-use generativity::{Id, make_guard};
+use generativity::{Id, guard};
 
 #[repr(transparent)]
 pub struct BOption<'id, T>(Option<T>, Id<'id>); // this should work
 
 fn main() {
-    make_guard!(a);
+    let a = guard!(a);
     let _ = BOption(Some(0), a.into());
 }

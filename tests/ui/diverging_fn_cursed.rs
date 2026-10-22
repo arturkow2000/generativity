@@ -1,11 +1,11 @@
-use generativity::{Id, make_guard};
+use generativity::{Id, guard};
 use never_say_never::Never;
 
 fn assert_eq_lt<'id>(_: Id<'id>, _: Id<'id>) {}
 
 fn diverging_fn_cursed() -> (Never, Never) {
-    make_guard!(g_a);
-    make_guard!(g_b);
+    let g_a = guard!(g_a);
+    let g_b = guard!(g_b);
 
     let a: Id = g_a.into();
     let b: Id = g_b.into();

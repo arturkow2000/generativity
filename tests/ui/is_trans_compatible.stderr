@@ -1,22 +1,16 @@
-warning: lint `repr_transparent_external_private_fields` has been renamed to `repr_transparent_non_zst_fields`
- --> tests/ui/is_trans_compatible.rs:3:9
-  |
-3 | #![deny(repr_transparent_external_private_fields)] // this should not trigger
-  |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: use the new name: `repr_transparent_non_zst_fields`
-  |
-  = note: `#[warn(renamed_and_removed_lints)]` on by default
-
-error: zero-sized fields in `repr(transparent)` cannot contain external types with private fields
- --> tests/ui/is_trans_compatible.rs:8:39
-  |
-8 | pub struct BOption<'id, T>(Option<T>, Id<'id>); // this should work
-  |                                       ^^^^^^^
-  |
-  = note: this field contains `Id<'_>`, which contains private fields, so it could become non-zero-sized in the future.
-  = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
-  = note: for more information, see issue #78586 <https://github.com/rust-lang/rust/issues/78586>
-note: the lint level is defined here
+warning: lint `repr_transparent_external_private_fields` has been removed: converted into hard error, see <https://github.com/rust-lang/rust/issues/78586> for more information
  --> tests/ui/is_trans_compatible.rs:3:9
   |
 3 | #![deny(repr_transparent_external_private_fields)] // this should not trigger
   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  |
+  = note: `#[warn(renamed_and_removed_lints)]` on by default
+
+error[E0690]: transparent struct needs at most one non-trivial field, but has 2
+ --> tests/ui/is_trans_compatible.rs:8:1
+  |
+8 | pub struct BOption<'id, T>(Option<T>, Id<'id>); // this should work
+  | ^^^^^^^^^^^^^^^^^^^^^^^^^^ ---------  ------- this field contains `Id<'_>`, which has private fields, so it could become non-zero-sized in the future
+  | |                          |
+  | |                          this field is generic and hence may have non-zero size
+  | needs at most one non-trivial field, but has 2

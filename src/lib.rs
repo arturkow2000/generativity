@@ -134,7 +134,7 @@ impl<'id> Drop for LifetimeBrand<'id> {
     #[inline(always)]
     fn drop(&mut self) {
         // This impl purposefully left blank. The presence of a Drop impl gives
-        // the `make_guard` type drop glue, dropping it at the end of scope.
+        // `LifetimeBrand` drop glue, dropping it at the end of scope.
         // Importantly, this ensures that the compiler has to consider `'id`
         // live at the point that this type is dropped, because this impl could
         // potentially use data borrowed that lifetime. #[inline(always)] just
@@ -168,7 +168,7 @@ impl<'id> LifetimeBrand<'id> {
 /// Multiple `guard!`ed lifetimes will always fail to unify:
 ///
 /// ```rust,compile_fail,E0716
-/// # // trybuild ui test tests/ui/crossed_streams-expr.rs
+/// # // trybuild ui test tests/ui/crossed_streams.rs
 /// # use generativity::guard;
 /// let a = guard!(a);
 /// let b = guard!(b);
@@ -224,29 +224,6 @@ macro_rules! guard {
     }};
 }
 
-/// Create a `Guard` with a unique invariant lifetime (with respect to other
-/// trusted/invariant lifetime brands).
-///
-/// This is a statement macro version of [`guard!`] that works on Rust versions
-/// before `#![feature(super_let)]`
-#[macro_export]
-macro_rules! make_guard {
-    ($name:ident) => {
-        // SAFETY: See guard! above.
-        let branded_place = unsafe { $crate::Id::new() };
-        // We could use $name instead of anonymous_generativity_brand, but this
-        // leads to confusion of whether the drop timing note is about this or
-        // the created Guard value.
-        #[allow(unused)]
-        let lifetime_brand = unsafe { $crate::LifetimeBrand::new(&branded_place) };
-        let $name = unsafe { $crate::Guard::new(branded_place) };
-
-        if let $crate::__private::Some(x) = $crate::__private::None {
-            return x;
-        }
-    };
-}
-
 #[doc(hidden)]
 /// NOT STABLE PUBLIC API. Used by the expansion of [`guard!`].
 pub mod __private {
@@ -260,8 +237,8 @@ mod test {
 
     #[test]
     fn dont_error_in_general() {
-        make_guard!(a);
-        make_guard!(b);
+        let a = guard!(a);
+        let b = guard!(b);
         assert_eq!(a, a);
         assert_eq!(b, b);
     }
@@ -275,7 +252,7 @@ mod test {
         {
         }
 
-        make_guard!(guard);
+        let guard = guard!();
         assert_oibits(&guard);
         let id: Id<'_> = guard.into();
         assert_oibits(&id);

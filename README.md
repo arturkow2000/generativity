@@ -14,11 +14,11 @@ is forced to assume that it can be handed _any_ lifetime (the `for<'a>` bound), 
 it cannot possibly use another lifetime, even `'static`, in its place (the invariance).
 
 This crate implements a different approach using macros and a `Drop`-based scope guard.
-When you call `generativity::make_guard!` to make a unique lifetime guard, the macro
+When you call `generativity::guard!` to make a unique lifetime guard, the macro
 first creates an `Id` holding an invariant lifetime. It then puts within a `Drop` type
 a `&'id Id<'id>` reference. A different invocation of the macro has a different end timing
 to its tag lifetime, so the lifetimes cannot be unified. These types have no safe way to
-construct them other than via `make_guard!`, thus the lifetime is guaranteed unique.
+construct them other than via `guard!`, thus the lifetime is guaranteed unique.
 
 This effectively does the same thing as wrapping the rest of the function in an
 immediately invoked closure. We do some pre-work (create the tag and give the caller the
@@ -44,15 +44,17 @@ branded lifetime; `&'static T` can be used where `&'a T` is expected, for *any* 
 // We know this because of how we carefully control drop timing here.
 // The branded lifetime's end is bound to be no later than when the
 // `branded_place` is invalidated at the end of scope, but also must be
-// no sooner than `lifetime_brand` is dropped, also at the end of scope.
+// no sooner than when `$name` is dropped, also at the end of scope.
 // Some other variant lifetime could be constrained to be equal to the
-// brand lifetime, but no other lifetime branded by `make_guard!` can,
+// brand lifetime, but no other lifetime branded by `guard!` can,
 // as its brand lifetime has a distinct drop time from this one. QED
-let branded_place = unsafe { $crate::Id::new() };
+//
+// `super let` extends both bindings to the scope the guard is created in.
+super let branded_place = unsafe { $crate::Id::new() };
 #[allow(unused)]
-let lifetime_brand = unsafe { $crate::LifetimeBrand::new(&branded_place) };
-// implicit when exiting scope: drop(lifetime_brand), as LifetimeBrand: Drop
-let $name = unsafe { $crate::Guard::new(branded_place) };
+super let $name = unsafe { $crate::LifetimeBrand::new(&branded_place) };
+// implicit when exiting scope: drop($name), as LifetimeBrand: Drop
+unsafe { $crate::Guard::new(branded_place) }
 ```
 
 A previous version of this crate emitted more code in the macro, and defined the
@@ -61,7 +63,7 @@ from the time, but the current compiler produces an equivalently good or better
 error with `LifetimeBrand` defined in the `generativity` crate.
 
 The `LifetimeBrand` type is *not public API* and must not be used directly. It
-is not covered by stability guarantees; only usage of `make_guard!` and other
+is not covered by stability guarantees; only usage of `guard!` and other
 documented APIs are considered stable.
 
 ## Huge generativity disclaimer
@@ -74,7 +76,7 @@ carriers. This applies equally to the traditional method:
 fn scope<F>(f: F)
 where F: for<'id> FnOnce(Guard<'id>)
 {
-    make_guard!(guard);
+    let guard = guard!();
     f(guard);
 }
 
@@ -84,7 +86,7 @@ fn unify<'a>(_: &'a (), _: &Guard<'a>) {
 
 fn main() {
     let place = ();
-    make_guard!(guard);
+    let guard = guard!();
     unify(&place, &guard);
     scope(|guard| {
         unify(&place, &guard);
@@ -115,15 +117,18 @@ such a feature, and thus will remain sound.
 
 However, in the specific case that the containing function returns `!` (is known
 to diverge at the type level), it is possible to get borrow checking to ignore
-the impact of drop glue, if it is never reached in any arm. `make_guard!` will
+the impact of drop glue, if it is never reached in any arm. `guard!` will
 refuse to compile in this case; in the case of any other return type, we ensure
 that the drop glue is considered in determining the full lifetime of the brand.
 
 ## Minimum supported Rust version
 
-The crate currently requires Rust 1.85. I have no intent of increasing the
-compiler version requirement of this crate beyond this. However, this is only
-guaranteed within a given minor version number.
+This fork requires nightly Rust, as `guard!` is implemented with `super let`
+(<https://github.com/rust-lang/rust/issues/139076>). Callers don't need to enable
+`#![feature(super_let)]`, as `guard!` is allowed to use it internally.
+
+The statement macro `make_guard!`, which works on stable Rust, has been removed
+in favor of `guard!`.
 
 ## License
 
